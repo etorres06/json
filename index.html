@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Formateador de JSON múltiple</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      color: #ffffff;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(0, 123, 255, 0.02) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 50px;
+      background: linear-gradient(135deg, #00d4ff 0%, #007bff 50%, #6c5ce7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+      position: relative;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+      border-radius: 2px;
+    }
+
+    .upload-section {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 40px;
+      margin-bottom: 40px;
+      text-align: center;
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-section::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, #00d4ff, #007bff, #6c5ce7, #00d4ff);
+      border-radius: 22px;
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .upload-section:hover::before {
+      opacity: 0.7;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-upload-label {
+      display: inline-block;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 1.1rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+    }
+
+    .file-upload-label::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .file-upload-label:hover::before {
+      left: 100%;
+    }
+
+    .file-upload-label:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(0, 123, 255, 0.4);
+      border-color: rgba(0, 212, 255, 0.5);
+    }
+
+    .btn-download-all {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 30px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-download-all::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-download-all:hover::before {
+      left: 100%;
+    }
+
+    .btn-download-all:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-download-all:disabled {
+      background: linear-gradient(135deg, #6c757d, #495057);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+      opacity: 0.6;
+    }
+
+    .json-container {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-left: 4px solid #00d4ff;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .json-container:hover {
+      transform: translateY(-5px);
+      box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      border-left-color: #00ff88;
+    }
+
+    .json-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .json-container:hover::before {
+      opacity: 1;
+    }
+
+    .json-container pre {
+      background: rgba(0, 0, 0, 0.3);
+      color: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .json-container pre::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .json-container pre::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .json-container pre::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #00d4ff, #007bff);
+      border-radius: 4px;
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 500;
+      display: inline-block;
+      margin-top: 20px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-download::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-download:hover::before {
+      left: 100%;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4);
+      text-decoration: none;
+      color: white;
+    }
+
+    .json-container[style*="border-left: 5px solid red"] {
+      border-left-color: #ff4757 !important;
+      background: rgba(255, 71, 87, 0.1);
+    }
+
+    .json-container[style*="border-left: 5px solid red"]:hover {
+      border-left-color: #ff3742 !important;
+    }
+
+    .error-text {
+      color: #ff6b7d;
+      font-weight: 500;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 80px;
+      padding: 30px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+    }
+
+    .footer p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.95rem;
+      font-weight: 400;
+      margin-top: 20px;
+    }
+
+    .footer .developer {
+      background: linear-gradient(135deg, #00d4ff, #007bff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 600;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .floating {
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 15px;
+      }
+      
+      h1 {
+        font-size: 2.2rem;
+      }
+      
+      .upload-section {
+        padding: 25px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1 class="floating">Formateador de JSON múltiple</h1>
+
+    <div class="upload-section">
+      <button class="btn-download-all" id="downloadAllBtn" disabled>📦 Descargar TODOS en ZIP</button><br><br>
+      
+      <label for="jsonFiles" class="file-upload-label">
+        📁 Seleccionar archivos JSON
+      </label>
+      <input type="file" id="jsonFiles" multiple accept=".json">
+    </div>
+
+    <div id="output"></div>
+
+    <footer class="footer">
+      <p>Desarrollado por <span class="developer">Estevan Torres</span> - Desarrollador de Software</p>
+    </footer>
+  </div>
+
+  <script>
+    const input = document.getElementById('jsonFiles');
+    const output = document.getElementById('output');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+    let jsonArchivosEstructurados = {}; // nombre -> contenido
+
+    input.addEventListener('change', handleFiles);
+    downloadAllBtn.addEventListener('click', descargarTodosEnZIP);
+
+    function handleFiles(event) {
+      const files = event.target.files;
+      output.innerHTML = "";
+      jsonArchivosEstructurados = {}; // reiniciar archivos
+      downloadAllBtn.disabled = true;
+
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+          try {
+            const jsonData = JSON.parse(e.target.result);
+            const prettyJSON = JSON.stringify(jsonData, null, 2);
+
+            // Guardar en objeto global para luego armar el ZIP
+            jsonArchivosEstructurados[`estructurado_${file.name}`] = prettyJSON;
+
+            const container = document.createElement('div');
+            container.className = 'json-container';
+
+            const pre = document.createElement('pre');
+            pre.textContent = prettyJSON;
+
+            const downloadBtn = document.createElement('a');
+            downloadBtn.className = 'btn-download';
+            downloadBtn.textContent = '📥 Descargar JSON individual';
+            downloadBtn.href = URL.createObjectURL(new Blob([prettyJSON], { type: 'application/json' }));
+            downloadBtn.download = `estructurado_${file.name}`;
+
+            container.appendChild(pre);
+            container.appendChild(downloadBtn);
+            output.appendChild(container);
+
+            downloadAllBtn.disabled = false;
+
+          } catch (err) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'json-container';
+            errorDiv.style.borderLeft = '5px solid red';
+            errorDiv.innerHTML = `<strong class="error-text">Error al procesar ${file.name}:</strong><br><span class="error-text">${err.message}</span>`;
+            output.appendChild(errorDiv);
+          }
+        };
+
+        reader.readAsText(file);
+      });
+    }
+
+    function descargarTodosEnZIP() {
+      const zip = new JSZip();
+
+      for (let nombreArchivo in jsonArchivosEstructurados) {
+        zip.file(nombreArchivo, jsonArchivosEstructurados[nombreArchivo]);
+      }
+
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(content);
+        enlace.download = 'json_estructurados.zip';
+        enlace.click();
+      });
+    }
+  </script>
+
+</body>
+</html>
